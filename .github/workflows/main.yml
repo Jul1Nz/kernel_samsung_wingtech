@@ -26,9 +26,9 @@ jobs:
       - name: ¡Mandarle Mecha con build.sh!
         run: |
           # Ya no hace falta exportar el PATH porque lo hicimos arriba con GITHUB_PATH
-          chmod +x "build (2).sh"
+          chmod +x "build.sh"
           
-          ./"build (2).sh" kernel --jobs $(nproc --all) rsuntk-a04_defconfig
+          ./"build.sh" kernel --jobs $(nproc --all) rsuntk-a04_defconfig
         env:
           KERNELSU: true
           IS_CI: true
