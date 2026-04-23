@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 
 #
-# Rissu Kernel Project
+# Rissu Kernel Project - Goya Edition
 # A special build script for Rissu's kernel
 #
 
@@ -12,13 +12,10 @@
 [ -z $DEFAULT_KSU_REPO ] && DEFAULT_KSU_REPO="https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh"
 [ -z $DEFAULT_KSU_BRANCH ] && DEFAULT_KSU_BRANCH="main"
 [ -z $DEFAULT_AK3_REPO ] && DEFAULT_AK3_REPO="https://github.com/rsuntk/AnyKernel3.git"
-[ -z $DEVICE ] && DEVICE="Unknown"
+[ -z $DEVICE ] && DEVICE="SamsungA04"
 
-# special rissu's path. linked to his toolchains
-if [ -d /rsuntk ]; then
-	export CROSS_COMPILE=/rsuntk/toolchains/gnu-6/bin/aarch64-linux-gnu-
-	export PATH=/rsuntk/toolchains/clang-20/bin:$PATH
-fi
+# Se eliminaron las rutas fijas de /rsuntk para evitar errores en GitHub Actions.
+# El script ahora usará los compiladores que estén en el PATH del sistema.
 
 # start of default args
 DEFAULT_ARGS="
@@ -85,9 +82,7 @@ usage() {
 	[ -d arch/$ARCH/configs ] && printf "\tavailable defconfig: `ls arch/arm64/configs`\n"
 	
 	echo ""
-	printf "NOTE: Run: \texport CROSS_COMPILE=\"<PATH_TO_ANDROID_CC>\"\n"
-	printf "\t\texport PATH=\"<PATH_TO_LLVM>\"\n"
-	printf "before running this script!\n"
+	printf "NOTE: Asegurate de que el compilador esté en el PATH antes de correr esto.\n"
 	printf "\n"
 	printf "Misc:\n"
 	printf "\tPOST_BUILD_CLEAN: Clean post build: (opt:boolean)\n"
@@ -204,12 +199,10 @@ post_build_clean() {
 	if [ -e $AK3 ]; then
 		rm -rf $AK3/Image
 		rm -rf $AK3/modules/vendor/lib/modules/*.ko
-		#sed -i "s/do\.modules=.*/do.modules=0/" "$(pwd)/AnyKernel3/anykernel.sh"
 		echo "stub" > $AK3/modules/vendor/lib/modules/stub
 	fi
 	rm getutsrel
 	rm utsrelease.c
-	# clean out folder
 	rm -rf out
 	make clean
 	make mrproper
@@ -230,10 +223,11 @@ post_build() {
 	if [ -d $AK3 ]; then
 		echo "- Creating AnyKernel3"
 		gen_getutsrelease;
+		# Se ajustó el uso de gcc para que sea más compatible
 		if [ -d $(pwd)/out ]; then
-			gcc -D__OUT__ -CC utsrelease.c -o getutsrel
+			gcc -I$(pwd)/out/include -D__OUT__ -C utsrelease.c -o getutsrel
 		else
-			gcc -CC utsrelease.c -o getutsrel
+			gcc -I$(pwd)/include -C utsrelease.c -o getutsrel
 		fi
 		UTSRELEASE=$(./getutsrel)
 		sed -i "s/kernel\.string=.*/kernel.string=$UTSRELEASE/" "$AK3/anykernel.sh"
@@ -241,14 +235,12 @@ post_build() {
 		cp $IMAGE $AK3
 		cd $AK3
 		zip -r9 ../`echo $ZIP_FMT`.zip *
-		# CI will clean itself post-build, so we don't need to clean
-		# Also avoiding small AnyKernel3 zip issue!
 		if [ "$IS_CI" != "true" ] && [ "$DO_CLEAN" = "true" ]; then
 			pr_info "Host is not Automated CI, cleaning dirs"
 			post_build_clean;
 		fi
 		cd ..
-		pr_err "Build done. Thanks for using this build script :)"
+		pr_info "Build done. ¡Ahí tenés tu kernel, July! :)"
 	fi
 }
 
@@ -274,7 +266,7 @@ handle_lto() {
 # call summary
 pr_sum
 if [ "$BUILD" = "kernel" ]; then
-	make -j`echo $ALLOC_JOB` -C $(pwd) O=$(pwd)/out `echo $DEFAULT_ARGS` `echo $BUILD_DEFCONFIG` rsuntk.config
+	make -j`echo $ALLOC_JOB` -C $(pwd) O=$(pwd)/out `echo $DEFAULT_ARGS` `echo $BUILD_DEFCONFIG`
 	[ "$KERNELSU" = "true" ] && setconfig enable KSU
 	[ "$LTO" != "none" ] && handle_lto || pr_info "LTO not set";
 	make -j`echo $ALLOC_JOB` -C $(pwd) O=$(pwd)/out `echo $DEFAULT_ARGS`
@@ -285,5 +277,5 @@ if [ "$BUILD" = "kernel" ]; then
 		pr_post_build "failed"
 	fi
 elif [ "$BUILD" = "defconfig" ]; then
-	make -j`echo $ALLOC_JOB` -C $(pwd) O=$(pwd)/out `echo $DEFAULT_ARGS` `echo $BUILD_DEFCONFIG` rsuntk.config
+	make -j`echo $ALLOC_JOB` -C $(pwd) O=$(pwd)/out `echo $DEFAULT_ARGS` `echo $BUILD_DEFCONFIG`
 fi
