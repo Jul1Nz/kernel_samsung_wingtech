@@ -1,13 +1,13 @@
 name: Compilación del Kernel - Samsung A04
 on:
-  workflow_dispatch: # Para que lo arranques vos a mano cuando quieras
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Clonando el código del motor
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Actualizado a v4
 
       - name: Instalando herramientas del taller
         run: |
@@ -20,20 +20,21 @@ jobs:
 
       - name: ¡Mandarle Mecha con build.sh!
         run: |
-          # 1. Ponemos el compilador en el camino del sistema para que build.sh lo vea
+          # 1. Ponemos el compilador en el camino del sistema
           export PATH="$(pwd)/clang/bin:$PATH"
           
-          # 2. Permisos para que el script no sea un "vago"
+          # 2. Permisos para que el script labure
           chmod +x "build.sh"
           
-          # 3. Arrancamos: target=kernel, jobs=max, config=tu_defconfig
-          # Cambiá 'rsuntk-a04_defconfig' por el nombre real de tu archivo en arch/arm64/configs
+          # 3. Arrancamos: target, jobs, config
           ./"build.sh" kernel --jobs $(nproc --all) rsuntk-a04_defconfig
         env:
-          KERNELSU: true # Le activamos el KernelSU ya que el script lo soporta
+          KERNELSU: true
+          IS_CI: true # Le avisamos que es un servidor para que no pida confirmaciones
 
       - name: Subiendo el Trofeo (Kernel Zip)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # ¡ESTE ES EL QUE IMPORTA, v4!
         with:
           name: Kernel-SamsungA04-July
-          path: "*.zip" # Sube el AnyKernel3 que armó el script
+          path: "*.zip" 
+          compression-level: 0 # Para que no tarde mil años en comprimir lo que ya es un zip
