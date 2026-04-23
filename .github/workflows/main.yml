@@ -1,0 +1,39 @@
+name: Compilación del Kernel - Samsung A04
+on:
+  workflow_dispatch: # Para que lo arranques vos a mano cuando quieras
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonando el código del motor
+        uses: actions/checkout@v3
+
+      - name: Instalando herramientas del taller
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc build-essential zip gcc-aarch64-linux-gnu clang libssl-dev
+
+      - name: Bajando el Compilador (Proton Clang)
+        run: |
+          git clone https://github.com/kdrag0n/proton-clang.git --depth=1 clang
+
+      - name: ¡Mandarle Mecha con build.sh!
+        run: |
+          # 1. Ponemos el compilador en el camino del sistema para que build.sh lo vea
+          export PATH="$(pwd)/clang/bin:$PATH"
+          
+          # 2. Permisos para que el script no sea un "vago"
+          chmod +x "build.sh"
+          
+          # 3. Arrancamos: target=kernel, jobs=max, config=tu_defconfig
+          # Cambiá 'rsuntk-a04_defconfig' por el nombre real de tu archivo en arch/arm64/configs
+          ./"build.sh" kernel --jobs $(nproc --all) rsuntk-a04_defconfig
+        env:
+          KERNELSU: true # Le activamos el KernelSU ya que el script lo soporta
+
+      - name: Subiendo el Trofeo (Kernel Zip)
+        uses: actions/upload-artifact@v3
+        with:
+          name: Kernel-SamsungA04-July
+          path: "*.zip" # Sube el AnyKernel3 que armó el script
