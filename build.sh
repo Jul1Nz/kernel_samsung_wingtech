@@ -219,15 +219,15 @@ post_build() {
 	DATE=$(date +'%Y%m%d%H%M%S')
 	ZIP_FMT="AnyKernel3-`echo $DEVICE`_$GITSHA-$DATE"
 	
-	clone_ak3;
+clone_ak3;
 	if [ -d $AK3 ]; then
 		echo "- Creating AnyKernel3"
 		gen_getutsrelease;
-		# Se ajustó el uso de gcc para que sea más compatible
+		# Usamos gcc del sistema para este binario chiquito de host
 		if [ -d $(pwd)/out ]; then
-			gcc -I$(pwd)/out/include -D__OUT__ -C utsrelease.c -o getutsrel
+			gcc -I$(pwd)/out/include -I$(pwd)/out/include/generated -D__OUT__ utsrelease.c -o getutsrel
 		else
-			gcc -I$(pwd)/include -C utsrelease.c -o getutsrel
+			gcc -I$(pwd)/include -I$(pwd)/include/generated utsrelease.c -o getutsrel
 		fi
 		UTSRELEASE=$(./getutsrel)
 		sed -i "s/kernel\.string=.*/kernel.string=$UTSRELEASE/" "$AK3/anykernel.sh"
