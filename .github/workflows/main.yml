@@ -9,30 +9,25 @@ jobs:
       - name: Clonando el código
         uses: actions/checkout@v4
 
-      - name: Instalando herramientas (El Arsenal)
+      - name: Instalando herramientas
         run: |
           sudo apt-get update
           sudo apt-get install -y bc build-essential zip gcc-aarch64-linux-gnu clang lld libssl-dev
 
-      - name: Bajando el Compilador (AOSP Clang - El que no falla)
+      - name: Bajando el Compilador (AOSP Clang)
         run: |
-          # Bajamos el Clang oficial de Google/AOSP que es más compatible
+          # Clonamos el Clang oficial
           git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth=1 -b master clang-aosp
-          # Buscamos la versión más nueva dentro de esa carpeta
-          CLANG_DIR=$(ls -d clang-aosp/clang-r*)
-          echo "CLANG_PATH=$GITHUB_WORKSPACE/$CLANG_DIR" >> $GITHUB_ENV
+          
+          # Buscamos la carpeta exacta y la guardamos bien
+          CLANG_BIN=$(ls -d $GITHUB_WORKSPACE/clang-aosp/clang-r*/bin)
+          echo "$CLANG_BIN" >> $GITHUB_PATH
 
       - name: ¡Mandarle Mecha con build.sh!
         run: |
-          # 1. Usamos la ruta que guardamos arriba
-          export PATH="${{ env.CLANG_PATH }}/bin:$PATH"
-          
-          # 2. Forzamos el uso del enlazador del sistema para evitar el error .relr.dyn
-          export LD_LIBRARY_PATH="${{ env.CLANG_PATH }}/lib64:$LD_LIBRARY_PATH"
-          
+          # Ya no hace falta exportar el PATH porque lo hicimos arriba con GITHUB_PATH
           chmod +x "build (2).sh"
           
-          # 3. Al ataque
           ./"build (2).sh" kernel --jobs $(nproc --all) rsuntk-a04_defconfig
         env:
           KERNELSU: true
