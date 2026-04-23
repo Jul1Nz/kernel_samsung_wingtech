@@ -6,35 +6,40 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Clonando el código del motor
-        uses: actions/checkout@v4 # Actualizado a v4
+      - name: Clonando el código
+        uses: actions/checkout@v4
 
-      - name: Instalando herramientas del taller
+      - name: Instalando herramientas (El Arsenal)
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential zip gcc-aarch64-linux-gnu clang libssl-dev
+          sudo apt-get install -y bc build-essential zip gcc-aarch64-linux-gnu clang lld libssl-dev
 
-      - name: Bajando el Compilador (Proton Clang)
+      - name: Bajando el Compilador (AOSP Clang - El que no falla)
         run: |
-          git clone https://github.com/kdrag0n/proton-clang.git --depth=1 clang
+          # Bajamos el Clang oficial de Google/AOSP que es más compatible
+          git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth=1 -b master clang-aosp
+          # Buscamos la versión más nueva dentro de esa carpeta
+          CLANG_DIR=$(ls -d clang-aosp/clang-r*)
+          echo "CLANG_PATH=$GITHUB_WORKSPACE/$CLANG_DIR" >> $GITHUB_ENV
 
       - name: ¡Mandarle Mecha con build.sh!
         run: |
-          # 1. Ponemos el compilador en el camino del sistema
-          export PATH="$(pwd)/clang/bin:$PATH"
+          # 1. Usamos la ruta que guardamos arriba
+          export PATH="${{ env.CLANG_PATH }}/bin:$PATH"
           
-          # 2. Permisos para que el script labure
-          chmod +x "build.sh"
+          # 2. Forzamos el uso del enlazador del sistema para evitar el error .relr.dyn
+          export LD_LIBRARY_PATH="${{ env.CLANG_PATH }}/lib64:$LD_LIBRARY_PATH"
           
-          # 3. Arrancamos: target, jobs, config
-          ./"build.sh" kernel --jobs $(nproc --all) rsuntk-a04_defconfig
+          chmod +x "build (2).sh"
+          
+          # 3. Al ataque
+          ./"build (2).sh" kernel --jobs $(nproc --all) rsuntk-a04_defconfig
         env:
           KERNELSU: true
-          IS_CI: true # Le avisamos que es un servidor para que no pida confirmaciones
+          IS_CI: true
 
-      - name: Subiendo el Trofeo (Kernel Zip)
-        uses: actions/upload-artifact@v4 # ¡ESTE ES EL QUE IMPORTA, v4!
+      - name: Subiendo el Trofeo
+        uses: actions/upload-artifact@v4
         with:
           name: Kernel-SamsungA04-July
-          path: "*.zip" 
-          compression-level: 0 # Para que no tarde mil años en comprimir lo que ya es un zip
+          path: "*.zip"
